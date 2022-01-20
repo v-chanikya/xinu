@@ -7,9 +7,11 @@ EXPOSE 67
 RUN apt-get update
 RUN dpkg --add-architecture armel
 RUN dpkg --add-architecture i386
-RUN apt-get update && apt-get -y install apt-utils sudo git make bridge-utils dnsmasq flex bison vim gawk zlib1g-dev
-RUN apt-get -y install crossbuild-essential-i386 crossbuild-essential-armel gcc-arm-none-eabi qemu-system-x86 qemu-system-arm openssh-client
+RUN apt-get update && apt-get -y install apt-utils sudo git make bridge-utils dnsmasq flex bison vim gawk zlib1g-dev curl
+RUN apt-get -y install crossbuild-essential-i386 crossbuild-essential-armel gcc-arm-none-eabi qemu-system-x86 qemu-system-arm openssh-client openssh-server
 RUN apt-get -y install netcat socat net-tools watch 
+
+RUN service ssh start
 
 RUN export uid=1000 gid=1000 && \
     useradd -rm -d /home/xinu -s /bin/bash -G sudo -u ${uid} xinu && \
@@ -17,6 +19,7 @@ RUN export uid=1000 gid=1000 && \
     chmod 0440 /etc/sudoers.d/xinu && \
     chown -R ${uid} /home/xinu && \
     chown -R ${uid} /opt
+RUN echo 'xinu:xinu' | chpasswd
 
 RUN mkdir /etc/qemu
 RUN echo "allow virbr0" > /etc/qemu/bridge.conf
