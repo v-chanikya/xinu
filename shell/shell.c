@@ -26,17 +26,18 @@ const	struct	cmdent	cmdtab[] = {
 	{"led",         FALSE,  xsh_led},
 #endif
 #ifdef ETHER0
-  {"arp",		FALSE,	xsh_arp},
-  {"ipaddr",	FALSE,	xsh_ipaddr},
-	{"ping",	FALSE,	xsh_ping},
-	{"udp",		FALSE,	xsh_udpdump},
-	{"udpecho",	FALSE,	xsh_udpecho},
+        {"arp",		FALSE,	xsh_arp},
+        {"ipaddr",	FALSE,	xsh_ipaddr},
+        {"ping",	FALSE,	xsh_ping},
+        {"udp",		FALSE,	xsh_udpdump},
+        {"udpecho",	FALSE,	xsh_udpecho},
 	{"udpeserver",	FALSE,	xsh_udpeserver},
 #endif /* ETHER0 */
 #ifdef MMU
-	{"test_mmu", 	FALSE, 	xsh_mmu},
+        {"test_mmu", 	FALSE, 	xsh_mmu},
 #endif /* MMU */
-  {"?",		FALSE,	xsh_help},
+        {"?",		FALSE,	xsh_help},
+        {"hello",       FALSE,	xsh_hello},
         {"prodcons",    FALSE,  xsh_prodcons}
 };
 
