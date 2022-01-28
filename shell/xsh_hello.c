@@ -14,7 +14,7 @@ shellcmd xsh_hello(int nargs, char *args[]) {
         return 0;
     }
     else{
-        fprintf(stderr, "Error expected a single input\n");
+        printf("Syntax: run hello name\n");
         return 1;
     }
 }
