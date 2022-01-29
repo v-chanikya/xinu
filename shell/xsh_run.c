@@ -34,8 +34,8 @@ shellcmd xsh_run(int nargs, char *args[]) {
     int ncmds = sizeof(allowed_cmds)/sizeof(vcmds);
 
     if(nargs ==  1){
-        fprintf(stderr, "Syntax: run [cmd] [args]\n");
-        fprintf(stderr, "List of supported commands\n");
+        /* fprintf(stderr, "Syntax: run [cmd] [args]\n"); */
+        /* fprintf(stderr, "List of supported commands\n"); */
         list_cmds(allowed_cmds, ncmds);
         return 1;
     }
