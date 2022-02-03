@@ -1,8 +1,6 @@
 #include <xinu.h>
 #include <prodcons.h>
 
-extern int n;
-
 void producer(int count) {
     for (int i=0; i <= count; i++){
         wait(can_write);
@@ -10,4 +8,5 @@ void producer(int count) {
         printf("produced : %d\n", n);
         signal(can_read);
     }
+    signal(done_prodcons);
 }

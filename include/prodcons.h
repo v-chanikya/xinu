@@ -6,8 +6,9 @@
 extern int n; /* this is just declaration */
 
 /* Semaphores */
-sid32 can_read;
-sid32 can_write;
+extern sid32 can_read;
+extern sid32 can_write;
+extern sid32 done_prodcons;
 
 /* Function Prototype */
 void consumer(int count);

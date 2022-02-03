@@ -4,11 +4,14 @@
 #include <string.h>
 #include <stdio.h>
 #include <shprototypes.h>
+#include <run_cmd.h>
 
 /*----------------------------------------------------------------------------------
  * xsh_run - Runs the user provided command if it is in the list of allowed commands
  *----------------------------------------------------------------------------------
  */
+
+sid32 run_complete;
 
 typedef struct vcmds{
     char *cmd;
@@ -49,7 +52,9 @@ shellcmd xsh_run(int nargs, char *args[]) {
         
         for (int i=1; i < ncmds; i++){
             if (strncmp(args[0], allowed_cmds[i].cmd, strlen(allowed_cmds[i].cmd)) == 0){
+                run_complete = semcreate(0);
                 resume (create(allowed_cmds[i].func, 4096, 20, allowed_cmds[i].cmd, 2, nargs, args));
+                wait(run_complete);
                 return 0;
             }
         }
