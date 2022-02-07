@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <shprototypes.h>
 #include <run_cmd.h>
+#include <prodcons_bb.h>
 
 /*----------------------------------------------------------------------------------
  * xsh_run - Runs the user provided command if it is in the list of allowed commands
@@ -31,14 +32,13 @@ shellcmd xsh_run(int nargs, char *args[]) {
     vcmds allowed_cmds[] = {
         {"list", (void*) list_cmds},
         {"hello", (void*) xsh_hello},
-        {"prodcons", (void*) xsh_prodcons}
+        {"prodcons", (void*) xsh_prodcons},
+        {"prodcons_bb", (void*) prodcons_bb},
     };
 
     int ncmds = sizeof(allowed_cmds)/sizeof(vcmds);
 
     if(nargs ==  1){
-        /* fprintf(stderr, "Syntax: run [cmd] [args]\n"); */
-        /* fprintf(stderr, "List of supported commands\n"); */
         list_cmds(allowed_cmds, ncmds);
         return 1;
     }
@@ -50,8 +50,9 @@ shellcmd xsh_run(int nargs, char *args[]) {
         nargs--;
         args++;
         
+        int arg_len = strlen(args[0]);
         for (int i=1; i < ncmds; i++){
-            if (strncmp(args[0], allowed_cmds[i].cmd, strlen(allowed_cmds[i].cmd)) == 0){
+            if (arg_len == strlen(allowed_cmds[i].cmd) && strncmp(args[0], allowed_cmds[i].cmd, arg_len) == 0){
                 run_complete = semcreate(0);
                 resume (create(allowed_cmds[i].func, 4096, 20, allowed_cmds[i].cmd, 2, nargs, args));
                 wait(run_complete);
