@@ -30,8 +30,8 @@ void list_cmds(vcmds *cmds, int ncmds){
 shellcmd xsh_run(int nargs, char *args[]) {
 
     vcmds allowed_cmds[] = {
-        {"list", (void*) list_cmds},
         {"hello", (void*) xsh_hello},
+        {"list", (void*) list_cmds},
         {"prodcons", (void*) xsh_prodcons},
         {"prodcons_bb", (void*) prodcons_bb},
     };
@@ -51,7 +51,7 @@ shellcmd xsh_run(int nargs, char *args[]) {
         args++;
         
         int arg_len = strlen(args[0]);
-        for (int i=1; i < ncmds; i++){
+        for (int i=0; i < ncmds; i++){
             if (arg_len == strlen(allowed_cmds[i].cmd) && strncmp(args[0], allowed_cmds[i].cmd, arg_len) == 0){
                 run_complete = semcreate(0);
                 resume (create(allowed_cmds[i].func, 4096, 20, allowed_cmds[i].cmd, 2, nargs, args));

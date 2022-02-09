@@ -19,9 +19,7 @@ int prodcons_bb(int nargs, char *args[]) {
     int cons_r = 0;
 
     if (nargs != 5){
-        printf("Syntax: run prodcons_bb <# of producer processes> \
-                <# of consumer processes> <# of iterations the producer runs> \
-                <# of iterations the consumer runs>\n");
+        printf("Syntax: run prodcons_bb <# of producer processes> <# of consumer processes> <# of iterations the producer runs> <# of iterations the consumer runs>\n");
         goto fail;
     }else{
         prod_n =  atoi(args[1]);
@@ -32,8 +30,7 @@ int prodcons_bb(int nargs, char *args[]) {
 
     if (prod_n*prod_r == 0 || cons_n*cons_r == 0 ||
             prod_n*prod_r != cons_n*cons_r){
-        printf("Iteration Mismatch Error: the number of producer(s) \
-                iteration does not match the consumer(s) iteration\n");
+        printf("Iteration Mismatch Error: the number of producer(s) iteration does not match the consumer(s) iteration\n");
         goto fail;
     }
     /* Create semaphores */
