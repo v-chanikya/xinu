@@ -51,7 +51,8 @@ void future_prodcons(int nargs, char *args[]) {
   }
   sleepms(100);
 cleanup:
-  freemem(val, num_args);
+  if (val)
+      freemem(val, num_args);
   future_free(f_exclusive);
   signal(run_complete);
   return;
@@ -79,7 +80,7 @@ uint future_prod(future_t *fut, char *value) {
 uint future_cons(future_t *fut) {
   char *i = NULL;
   int status;
-  status = (int) future_get(fut, &i);
+  status = (int) future_get(fut, i);
   if (status < 1) {
     wait(print_sem);
     printf("future_get failed\n");

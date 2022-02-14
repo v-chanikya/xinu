@@ -39,7 +39,7 @@ syscall future_free(future_t* fut) {
         return OK;
 }
 
-syscall future_get(future_t* fut, char** out) {
+syscall future_get(future_t* fut, char* out) {
     struct procent *prptr;
     intmask mask;
     mask = disable();
@@ -53,12 +53,12 @@ syscall future_get(future_t* fut, char** out) {
             fut->state      = FUTURE_WAITING;
             fut->pid        = currpid;
             resched();
-            *out = fut->data;
+            *out = *fut->data;
             fut->data = NULL;
             fut->state = FUTURE_EMPTY;
             break;
         case FUTURE_READY:
-            *out = fut->data;
+            *out = *fut->data;
             fut->data = NULL;
             fut->state = FUTURE_EMPTY;
             break;
