@@ -1,5 +1,6 @@
 #include <future.h>
 
+sid32 future_lock;
 future_t* future_alloc(future_mode_t mode, uint size, uint nelem) {
     intmask mask;
     mask = disable();
@@ -8,6 +9,7 @@ future_t* future_alloc(future_mode_t mode, uint size, uint nelem) {
     if (!fut)
         return (future_t*)SYSERR;
 
+    future_lock = semcreate(0);
     fut->mode   = mode;
     fut->size   = size;
     fut->state  = FUTURE_EMPTY;
@@ -43,28 +45,29 @@ syscall future_get(future_t* fut, char** out) {
     intmask mask;
     mask = disable();
 
-    int fail = 0;
-
     switch (fut->state){
         case FUTURE_EMPTY:
             fut->state = FUTURE_WAITING;
             fut->pid = getpid();
-            break;
+            restore(mask);
+            wait(future_lock);
+            mask = disable();
+            *out = fut->data;
+            fut->data = NULL;
+            fut->state = FUTURE_EMPTY;
+            restore(mask);
+            return OK;
         case FUTURE_READY:
             *out = fut->data;
             fut->data = NULL;
             fut->state = FUTURE_EMPTY;
-            break;
+            restore(mask);
+            return OK;
         case FUTURE_WAITING:
-            fail = 1;
-            break;
+            restore(mask);
+            return SYSERR;
     }
 
-    restore(mask);
-    if (fail)
-        return SYSERR;
-    else
-        return OK;
 }
 
 syscall future_set(future_t* fut, char* in){
@@ -76,16 +79,21 @@ syscall future_set(future_t* fut, char* in){
     switch (fut->state){
         case FUTURE_WAITING:
             fut->pid = 0;
+            fut->data = in;
+            fut->state = FUTURE_READY;
+            signal(future_lock);
+            restore(mask);
+            return OK;
         case FUTURE_EMPTY:
             fut->data = in;
             fut->state = FUTURE_READY;
-            break;
+            restore(mask);
+            return OK;
         case FUTURE_READY:
-            fail = 1;
-            break;
+            restore(mask);
+            return SYSERR;
     }
 
-    restore(mask);
     if (fail)
         return SYSERR;
     else
