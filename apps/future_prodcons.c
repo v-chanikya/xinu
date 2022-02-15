@@ -20,13 +20,17 @@ void future_prodcons(int nargs, char *args[]) {
       goto fail;
   int i = 2;
   while (i < nargs) {
-    if (! ((strncmp(args[i], "g", 1) == 0) 
-            || (strncmp(args[i], "s", 1) == 0)
-            || (atoi(args[i]) > 0)
-            || (atoi(args[i]) == 0 && strncmp(args[i], "0", 1) == 0))){
-        goto fail;
-    }
-    i++;
+      if (strncmp(args[i], "g", 1) == 0){
+          i++;
+      }else if (strncmp(args[i], "s", 1) == 0){
+          i++;
+          if((atoi(args[i]) > 0) || (atoi(args[i]) == 0 && strncmp(args[i], "0", 1) == 0))
+              i++;
+          else
+              goto fail;
+      }else{
+          goto fail;
+      }
   }
 
   int num_args = i;  // keeping number of args to create the array
