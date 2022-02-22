@@ -3,13 +3,12 @@
 #include <xinu.h>
 #include <string.h>
 #include <stdio.h>
+#include <run_cmd.h>
 
 /*---------------------------------------------------------------------------
  * xsh_hello - obtain user argument and appends a string hello in front of it
  *---------------------------------------------------------------------------
  */
-
-sid32 run_complete;
 
 shellcmd xsh_hello(int nargs, char *args[]) {
     int rv = 0;

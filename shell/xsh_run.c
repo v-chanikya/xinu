@@ -55,9 +55,9 @@ shellcmd xsh_run(int nargs, char *args[]) {
         int arg_len = strlen(args[0]);
         for (int i=0; i < ncmds; i++){
             if (arg_len == strlen(allowed_cmds[i].cmd) && strncmp(args[0], allowed_cmds[i].cmd, arg_len) == 0){
-                run_complete = semcreate(0);
+                /* run_complete = semcreate(0); */
                 resume (create(allowed_cmds[i].func, 4096, 20, allowed_cmds[i].cmd, 2, nargs, args));
-                wait(run_complete);
+                /* wait(run_complete); */
                 return 0;
             }
         }

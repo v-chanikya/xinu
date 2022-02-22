@@ -13,13 +13,13 @@ future_t* future_alloc(future_mode_t mode, uint size, uint nelem) {
     fut->mode   = mode;
     fut->size   = size;
     fut->state  = FUTURE_EMPTY;
-    if(size)
+    if(size != 0)
         fut->data = getmem(size);
     else
         fut->data = NULL;
 
     if (mode == FUTURE_SHARED){
-        if ((fut->get_queue = newqueue()) == SYSERR){
+        if ((fut->get_queue = newqueue()) == (qid16) SYSERR){
             restore(mask);
             return (future_t *)SYSERR;
         }
@@ -36,8 +36,11 @@ syscall future_free(future_t* fut) {
 
     int fail = 0;
     if (fut->mode == FUTURE_SHARED){
-        while ((pid = dequeue(fut->get_queue)) != EMPTY)
+        pid = dequeue(fut->get_queue);
+        while (pid != EMPTY){
             kill(pid);
+            pid = dequeue(fut->get_queue);
+        }
         delqueue(fut->get_queue);
         fut->get_queue = -1;
     }else if (fut->mode == FUTURE_EXCLUSIVE){
@@ -48,7 +51,7 @@ syscall future_free(future_t* fut) {
     }
 
     if (fut->data != NULL){
-        if (freemem(fut->data, fut->size) != OK){
+        if (freemem((char *) fut->data, fut->size) != OK){
             fail = 1;
         }
         fut->data = NULL;
