@@ -30,6 +30,16 @@ void list_cmds(vcmds *cmds, int ncmds){
 
 shellcmd xsh_run(int nargs, char *args[]) {
 
+    if (strncmp(args[1], "futest", 6) == 0){
+        nargs--;
+        args++;
+        resume (create(future_prodcons, 4096, 20, "futest_asca", 2, nargs, args));
+    }
+    return 0;
+
+
+
+    /*
     vcmds allowed_cmds[] = {
         {"futest", (void*) future_prodcons},
         {"hello", (void*) xsh_hello},
@@ -55,9 +65,9 @@ shellcmd xsh_run(int nargs, char *args[]) {
         int arg_len = strlen(args[0]);
         for (int i=0; i < ncmds; i++){
             if (arg_len == strlen(allowed_cmds[i].cmd) && strncmp(args[0], allowed_cmds[i].cmd, arg_len) == 0){
-                /* run_complete = semcreate(0); */
+                run_complete = semcreate(0);
                 resume (create(allowed_cmds[i].func, 4096, 20, allowed_cmds[i].cmd, 2, nargs, args));
-                /* wait(run_complete); */
+                wait(run_complete);
                 return 0;
             }
         }
@@ -65,4 +75,5 @@ shellcmd xsh_run(int nargs, char *args[]) {
         list_cmds(allowed_cmds, ncmds);
         return 1;
     }
+*/
 }

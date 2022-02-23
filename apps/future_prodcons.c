@@ -9,6 +9,11 @@ sid32 print_sem;
 
 void future_prodcons(int nargs, char *args[]) {
 
+    if (strncmp(args[1], "--free", 6) == 0){
+        resume(create(future_free_test, 2048, 20, "future_free_test", 2, nargs, args));
+    }
+
+/*
     if (strncmp(args[1], "-pc", 3) == 0){
         future_t* f_exclusive;
         char *val;
@@ -69,12 +74,11 @@ void future_prodcons(int nargs, char *args[]) {
     } else {
         goto fail;
     }
-    /* signal(run_complete); */
     return;
 fail:
     printf("Syntax: run futest [-pc [g ...] [s VALUE ...]|-f NUMBER][--free]\n");
-    /* signal(run_complete); */
     return;
+*/
 }
 
 uint future_prod(future_t *fut, char *value) {
