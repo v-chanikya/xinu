@@ -66,7 +66,8 @@ void future_prodcons(int nargs, char *args[]) {
         resume(create(future_fib, 2048, 20, "future_fib", 2, nargs, args));
         sleepms(100);
     } else if (strncmp(args[1], "--free", 6) == 0){
-        resume(create(future_free_test, 2048, 20, "future_free_test", 2, nargs, args));
+        future_free_test(nargs, args);
+        /* resume(create(future_free_test, 2048, 20, "future_free_test", 2, nargs, args)); */
     } else {
         goto fail;
     }
