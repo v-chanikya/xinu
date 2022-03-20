@@ -7,6 +7,7 @@
 #include <run_cmd.h>
 #include <prodcons_bb.h>
 #include <future_prodcons.h>
+#include <streams.h>
 
 /*----------------------------------------------------------------------------------
  * xsh_run - Runs the user provided command if it is in the list of allowed commands
@@ -36,6 +37,7 @@ shellcmd xsh_run(int nargs, char *args[]) {
         {"list", (void*) list_cmds},
         {"prodcons", (void*) xsh_prodcons},
         {"prodcons_bb", (void*) prodcons_bb},
+        {"tscdf", (void*) stream_proc},
     };
 
     int ncmds = sizeof(allowed_cmds)/sizeof(vcmds);
