@@ -60,7 +60,7 @@ int stream_proc(int nargs, char* args[])
     for (i = 0; i< num_streams; i++) {
         str->spaces = semcreate(1);
         str->items  = semcreate(0);
-        str->mutex  = semcreate(1);
+        str->mutex  = semcreate(0);
         str->head   = 0;
         str->tail   = 0;
         str->queue  = (struct data_element*) getmem(sizeof(struct data_element) * work_queue_depth);
@@ -82,7 +82,7 @@ int stream_proc(int nargs, char* args[])
         str++;
     }
 
-    // TODO: Parse input header file data and populate work queue
+    // Parse input header file data and populate work queue
     char *a;
     int st,ts,v;
     struct data_element *de;
@@ -104,6 +104,11 @@ int stream_proc(int nargs, char* args[])
         signal(str->items);
     }
 
+    str = strs;
+    for (i = 0; i < num_streams; i++) {
+        wait(str->mutex);
+        str++;
+    }
     // Join all launched consumer processes
     for (i = 0; i < num_streams; i++) {
         printf("process %d exited\n",ptrecv(cons_pt_id));
@@ -162,6 +167,8 @@ void stream_consumer(int32 id, struct stream *str)
         kprintf("%s\n", output);
         freemem((char *) qarray, (6*sizeof(int32)));
     }
+    tscdf_free(tc);
     printf("stream_consumer exiting\n");
     ptsend(cons_pt_id, cpid);
+    signal(str->mutex);
 }
