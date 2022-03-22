@@ -119,6 +119,15 @@ int stream_proc(int nargs, char* args[])
     time = (((clktime * 1000) + clkticks) - ((secs * 1000) + msecs));
     printf("time in ms: %u\n", time);
 
+    str = strs;
+    for (i = 0; i < num_streams; i++) {
+        freemem((char *)str->queue, (sizeof(struct data_element) * work_queue_depth));
+        semdelete(str->mutex);
+        semdelete(str->spaces);
+        semdelete(str->items);
+        str++;
+    }
+    freemem((char *)strs, (sizeof(struct stream) * num_streams));
     signal(run_complete);
     return OK;
 fail:
