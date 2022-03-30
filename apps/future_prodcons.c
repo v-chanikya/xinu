@@ -9,16 +9,21 @@ sid32 print_sem;
 
 void future_prodcons(int nargs, char *args[]) {
 
-    if (strncmp(args[1], "-pc", 3) == 0){
+    if ((strncmp(args[1], "-pc", 3) == 0) || (strncmp(args[1], "-pcq", 4) == 0)){
         future_t* f_exclusive;
         char *val;
+        int queue_type = 0;
+        if (strncmp(args[1], "-pcq", 4) == 0)
+            queue_type = 1;
 
         // First, try to iterate through the arguments and make sure they are all valid based on the requirements
         // (you may assume the argument after "s" there is always a number)
         if (nargs <= 2)
             goto fail;
         int i = 2;
-        i++;
+        if (queue_type == 1)
+            i = 3;
+        /* i++; */
         while (i < nargs) {
             if (strncmp(args[i], "g", 1) == 0){
                 i++;
@@ -35,9 +40,14 @@ void future_prodcons(int nargs, char *args[]) {
 
 
         print_sem = semcreate(1);
-        f_exclusive = future_alloc(FUTURE_EXCLUSIVE, sizeof(int), 1);
         int num_args = i;  // keeping number of args to create the array
-        i = 2; // reseting the index
+        if (queue_type == 1){
+            f_exclusive = future_alloc(FUTURE_QUEUE, sizeof(int), atoi(args[2]));
+            i = 3;
+        }else{
+            f_exclusive = future_alloc(FUTURE_EXCLUSIVE, sizeof(int), 1);
+            i = 2; // reseting the index
+        }
         val  =  (char *) getmem(num_args); // initializing the array to keep the "s" numbers
 
         // Iterate again through the arguments and create the following processes based on the passed argument ("g" or "s VALUE")
@@ -74,7 +84,7 @@ void future_prodcons(int nargs, char *args[]) {
     signal(run_complete);
     return;
 fail:
-    printf("Syntax: run futest [-pc [g ...] [s VALUE ...]|-f NUMBER][--free]\n");
+    printf("Syntax: run futest [-pc [g ...] [s VALUE ...]] | [-pcq LENGTH [g ...] [s VALUE ...]] | [-f NUMBER] | [--free]\n");
     signal(run_complete);
     return;
 }

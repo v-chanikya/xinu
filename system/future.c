@@ -10,19 +10,31 @@ future_t* future_alloc(future_mode_t mode, uint size, uint nelem) {
         return (future_t *)SYSERR;
     }
 
-    fut->mode   = mode;
-    fut->size   = size;
-    fut->state  = FUTURE_EMPTY;
-    if(size)
-        fut->data = getmem(size);
+    fut->mode       = mode;
+    fut->size       = size;
+    fut->state      = FUTURE_EMPTY;
+    fut->max_elems  = nelem;
+    fut->head       = 0;
+    fut->tail       = 0;
+    fut->count      = 0;
+
+    if(size * nelem)
+        fut->data = getmem(size * nelem);
     else
         fut->data = NULL;
 
-    if (mode == FUTURE_SHARED){
-        if ((fut->get_queue = newqueue()) == SYSERR){
-            restore(mask);
-            return (future_t *)SYSERR;
-        }
+    switch (mode) {
+        case FUTURE_QUEUE:
+            if ((fut->set_queue = newqueue()) == SYSERR){
+                restore(mask);
+                return (future_t *)SYSERR;
+            }
+        case FUTURE_SHARED:
+            if ((fut->get_queue = newqueue()) == SYSERR){
+                restore(mask);
+                return (future_t *)SYSERR;
+            }
+            break;
     }
 
     restore(mask);
@@ -35,25 +47,33 @@ syscall future_free(future_t* fut) {
     mask = disable();
 
     int fail = 0;
-    if (fut->mode == FUTURE_SHARED){
-        while ((pid = dequeue(fut->get_queue)) != EMPTY)
-            kill(pid);
-        delqueue(fut->get_queue);
-        fut->get_queue = -1;
-    }else if (fut->mode == FUTURE_EXCLUSIVE){
-        if (fut->pid){
-            kill(fut->pid);
-            fut->pid = -1;
-        }
+    // Kill all pending processes
+    switch (fut->mode){
+        case FUTURE_QUEUE:
+            while ((pid = dequeue(fut->set_queue)) != EMPTY)
+                kill(pid);
+            delqueue(fut->get_queue);
+            fut->get_queue = -1;
+        case FUTURE_SHARED:
+            while ((pid = dequeue(fut->get_queue)) != EMPTY)
+                kill(pid);
+            delqueue(fut->get_queue);
+            fut->get_queue = -1;
+            break;
+        case FUTURE_EXCLUSIVE:
+            if (fut->pid){
+                kill(fut->pid);
+                fut->pid = -1;
+            }
+            break;
     }
 
     if (fut->data != NULL){
-        if (freemem(fut->data, fut->size) != OK){
+        if (freemem(fut->data, fut->size * fut->max_elems) != OK){
             fail = 1;
         }
         fut->data = NULL;
     }
-        
 
     if (freemem((char *) fut, sizeof(future_t)) != OK){
         fail = 1;
@@ -72,6 +92,7 @@ syscall future_get(future_t* fut, char* out) {
     mask = disable();
 
     int fail = 0;
+    pid32 pid;
 
     switch (fut->mode){
         case FUTURE_EXCLUSIVE:
@@ -120,9 +141,23 @@ syscall future_get(future_t* fut, char* out) {
             }
             break;
         case FUTURE_QUEUE:
+            if (fut->count == 0){
+                if ((enqueue(currpid, fut->get_queue)) == SYSERR){
+                    fail = 1;
+                    /* break; */
+                }
+                resched();
+            }
+            for(int i = 0; i < fut->size; i++){
+                *(out + i) = *(fut->data + (fut->head * fut->size) + i);
+            }
+            fut->head = (fut->head + 1) % fut->max_elems;
+            fut->count -= 1;
+            if (fut->count == fut->max_elems - 1)
+                if ((pid = dequeue(fut->set_queue)) != EMPTY)
+                    ready(pid);
             break;
     }
-
 
     restore(mask);
     if (fail)
@@ -179,9 +214,23 @@ syscall future_set(future_t* fut, char* in){
             }
             break;
         case FUTURE_QUEUE:
+            if (fut->count == fut->max_elems){
+                if ((enqueue(currpid, fut->set_queue)) == SYSERR){
+                    fail = 1;
+                    break;
+                }
+                resched();
+            }
+            for(int i = 0; i < fut->size; i++){
+                *(fut->data + (fut->tail * fut->size) + i) = *(in + i);
+            }
+            fut->tail = (fut->tail + 1) % fut->max_elems;
+            fut->count += 1;
+            if (fut->count == 1)
+                if ((pid = dequeue(fut->get_queue)) != EMPTY)
+                    ready(pid);
             break;
     }
-
 
     restore(mask);
     if (fail)
