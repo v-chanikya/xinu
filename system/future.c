@@ -1,6 +1,7 @@
 #include <future.h>
 
-future_t* future_alloc(future_mode_t mode, uint size, uint nelem) {
+future_t* future_alloc(future_mode_t mode, uint size, uint nelem) 
+{
     intmask mask;
     mask = disable();
     
@@ -41,7 +42,8 @@ future_t* future_alloc(future_mode_t mode, uint size, uint nelem) {
     return fut;
 }
 
-syscall future_free(future_t* fut) {
+syscall future_free(future_t* fut)
+{
     pid32 pid;
     intmask mask;
     mask = disable();
@@ -86,13 +88,14 @@ syscall future_free(future_t* fut) {
         return OK;
 }
 
-syscall future_get(future_t* fut, char* out) {
-    struct procent *prptr;
+syscall future_get(future_t* fut, char* out)
+{
     intmask mask;
     mask = disable();
 
     int fail = 0;
     pid32 pid;
+    struct procent *prptr;
 
     switch (fut->mode){
         case FUTURE_EXCLUSIVE:
@@ -144,8 +147,10 @@ syscall future_get(future_t* fut, char* out) {
             if (fut->count == 0){
                 if ((enqueue(currpid, fut->get_queue)) == SYSERR){
                     fail = 1;
-                    /* break; */
+                    break;
                 }
+                prptr           = &proctab[currpid];
+                prptr->prstate  = PR_FUWAIT;
                 resched();
             }
             for(int i = 0; i < fut->size; i++){
@@ -166,12 +171,14 @@ syscall future_get(future_t* fut, char* out) {
         return OK;
 }
 
-syscall future_set(future_t* fut, char* in){
+syscall future_set(future_t* fut, char* in)
+{
     intmask mask;
     mask = disable();
-    pid32 pid;
 
     int fail = 0;
+    pid32 pid;
+    struct procent *prptr;
 
     switch (fut->mode){
         case FUTURE_EXCLUSIVE:
@@ -219,6 +226,8 @@ syscall future_set(future_t* fut, char* in){
                     fail = 1;
                     break;
                 }
+                prptr           = &proctab[currpid];
+                prptr->prstate  = PR_FUWAIT;
                 resched();
             }
             for(int i = 0; i < fut->size; i++){
