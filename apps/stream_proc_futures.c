@@ -91,20 +91,21 @@ int stream_proc_futures(int nargs, char* args[])
         future_set(futs[st], (char *) &de);
     }
 
-    // Join all launched consumer processes
     for (i = 0; i < num_streams_f; i++) {
-        printf("process %d exited\n",ptrecv(cons_pt_idf));
+        future_free(futs[i]);
     }
 
+    // Join all launched consumer processes
+    for (i = 0; i < num_streams_f; i++) {
+        kprintf("process %d exited\n",ptrecv(cons_pt_idf));
+    }
 
     // Measure the time of this entire function and report it at the end
     time = (((clktime * 1000) + clkticks) - ((secs * 1000) + msecs));
     printf("time in ms: %u\n", time);
 
-    /* str = strs; */
-    for (i = 0; i < num_streams_f; i++) {
-        future_free(futs[i]);
-    }
+    // Cleanup
+    /* ptdelete(cons_pt_idf); */
     freemem((char*) futs, (sizeof(future_t *) * num_streams_f));
     signal(run_complete);
     return OK;
@@ -120,7 +121,7 @@ void stream_consumer_future(int32 id, future_t *f)
     struct data_element de;
     // Print the current id and pid
     pid32 cpid = getpid();
-    printf("stream_consumer_future id:%d (pid:%d)\n", id, cpid);
+    kprintf("stream_consumer_future id:%d (pid:%d)\n", id, cpid);
 
     // Consume all values from the work queue of the corresponding stream
     struct tscdf *tc = tscdf_init(time_window_f);
@@ -151,7 +152,7 @@ void stream_consumer_future(int32 id, future_t *f)
         freemem((char *) qarray, (6*sizeof(int32)));
     }
     tscdf_free(tc);
-    printf("stream_consumer_future exiting\n");
+    kprintf("stream_consumer_future exiting\n");
     ptsend(cons_pt_idf, cpid);
     return;
 }

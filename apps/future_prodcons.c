@@ -42,6 +42,8 @@ void future_prodcons(int nargs, char *args[]) {
         print_sem = semcreate(1);
         int num_args = i;  // keeping number of args to create the array
         if (queue_type == 1){
+            if (atoi(args[2]) == 0)
+                goto fail;
             f_exclusive = future_alloc(FUTURE_QUEUE, sizeof(int), atoi(args[2]));
             i = 3;
         }else{
