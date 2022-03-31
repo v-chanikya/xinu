@@ -18,4 +18,8 @@ struct stream {
 int stream_proc(int nargs, char* args[]);
 void stream_consumer(int32 id, struct stream *str);
 
+#include <future.h>
+int stream_proc_futures(int nargs, char* args[]);
+void stream_consumer_future(int32 id, future_t *f);
+
 #endif // _STREAMS_H_

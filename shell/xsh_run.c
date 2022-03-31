@@ -38,6 +38,7 @@ shellcmd xsh_run(int nargs, char *args[]) {
         {"prodcons", (void*) xsh_prodcons},
         {"prodcons_bb", (void*) prodcons_bb},
         {"tscdf", (void*) stream_proc},
+        {"tscdf_fq", (void*) stream_proc_futures},
     };
 
     int ncmds = sizeof(allowed_cmds)/sizeof(vcmds);

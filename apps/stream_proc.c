@@ -2,7 +2,6 @@
 #include <run_cmd.h>
 #include <streams.h>
 #include <stdlib.h>
-#include "tscdf_input.h"
 #include "tscdf.h"
 
 int cons_pt_id = SYSERR; 
@@ -86,7 +85,7 @@ int stream_proc(int nargs, char* args[])
     char *a;
     int st,ts,v;
     struct data_element *de;
-    for (i=0; i < number_inputs; i++) {
+    for (i=0; i < n_input; i++) {
         a = (char *) stream_input[i];
         st = atoi(a);
         while (*a++ != '\t');
