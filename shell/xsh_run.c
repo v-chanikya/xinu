@@ -54,6 +54,10 @@ shellcmd xsh_run(int nargs, char *args[]) {
             list_cmds(allowed_cmds, ncmds);
             return 0;
         }
+        else if (strncmp(args[1], "fstest", 6) == 0){
+            fstest(nargs - 1, args + 1);
+            return 0;
+        }
         nargs--;
         args++;
         
