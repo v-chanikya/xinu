@@ -7,6 +7,7 @@
 #ifdef FS
 #include <fs.h>
 
+#define FS_DEBUG
 static fsystem_t fsd;
 int dev0_numblocks;
 int dev0_blocksize;
@@ -316,9 +317,9 @@ void fs_printfreemask(void) { // print block bitmask
 int fs_open(char *filename, int flags) {
 
     int filename_length = strlen(filename);
-    if (flags != O_RDWR ||
-            flags != O_WRONLY ||
-            flags != O_RDONLY ||
+    if ((flags != O_RDWR &&
+            flags != O_WRONLY &&
+            flags != O_RDONLY ) ||
             filename_length > FILENAMELEN)
         return SYSERR;
 

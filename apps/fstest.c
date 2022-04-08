@@ -140,7 +140,28 @@ int fstest_mkdev() {
   for (i = 0; i < 10; i++) {
     ASSERT_PASS(bs_mkdev(0, MDEV_BLOCK_SIZE, MDEV_NUM_BLOCKS))
     ASSERT_PASS(fs_mkfs(0, DEFAULT_NUM_INODES))
-    ASSERT_PASS(fs_create("test", O_CREAT))
+    /* ASSERT_PASS(fs_create("test", O_CREAT)) */
+    printf("%d\n", fs_create("test", O_CREAT));
+    ASSERT_PASS(fs_freefs(0))
+    ASSERT_PASS(bs_freedev(0))
+  }
+
+  return OK;
+}
+
+int fstest_create_close_open() {
+
+  int i, fd;
+
+  for (i = 0; i < 1; i++) {
+    ASSERT_PASS(bs_mkdev(0, MDEV_BLOCK_SIZE, MDEV_NUM_BLOCKS))
+    ASSERT_PASS(fs_mkfs(0, DEFAULT_NUM_INODES))
+    /* ASSERT_PASS(fs_create("test", O_CREAT)) */
+    fd = fs_create("test", O_CREAT);
+    printf("%d\n", fd);
+    fs_close(fd);
+    fd = fs_open("test", O_RDWR);
+    printf("%d\n", fd);
     ASSERT_PASS(fs_freefs(0))
     ASSERT_PASS(bs_freedev(0))
   }
@@ -175,6 +196,7 @@ int fstest(int nargs, char *args[]) {
   printf("\n\n\n");
   TEST(fstest_testbitmask)
   TEST(fstest_mkdev)
+  TEST(fstest_create_close_open)
 
 #else
   printf("No filesystem support\n");
