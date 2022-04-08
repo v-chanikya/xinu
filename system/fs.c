@@ -363,7 +363,8 @@ int fs_close(int fd) {
         return SYSERR;
     if (oft[fd].state == FSTATE_CLOSED)
         return SYSERR;
-    oft[fd].state = FSTATE_CLOSED;
+    oft[fd].state   = FSTATE_CLOSED;
+    oft[fd].flag    = 0;
     return OK;
 }
 
@@ -376,9 +377,21 @@ int fs_create(char *filename, int mode) {
         return SYSERR;
 
     // Check if file already exists
-    for (int i = 0; i < fsd.root_dir.numentries; i++)
-        if (strncmp(fsd.root_dir.entry[i].name, filename, filename_length) == 0)
+    for (int i = 0; i < fsd.root_dir.numentries; i++){
+        if (strncmp(fsd.root_dir.entry[i].name, filename, filename_length) == 0){
+            for (int j = 0; j < NUM_FD; j++){
+                if (oft[j].de == &fsd.root_dir.entry[i]){
+                    if (oft[j].state == FSTATE_CLOSED){
+                        oft[j].state    = FSTATE_OPEN;
+                        oft[j].flag     = O_RDWR;
+                        return j;
+                    }
+                    break;
+                }
+            }
             return SYSERR;
+        }
+    }
 
     // Find free inode
     int free_node_id = EMPTY;
