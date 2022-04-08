@@ -314,15 +314,108 @@ void fs_printfreemask(void) { // print block bitmask
  * TODO: implement the functions below
  */
 int fs_open(char *filename, int flags) {
-  return SYSERR;
+    
+    // Check if file already exists
+    int filename_length = strlen(filename);
+    for (int i = 0; i < fsd.root_dir.numentries; i++){
+        if (strncmp(fsd.root_dir.entry[i].name, filename, filename_length) == 0){
+            inode_t fnode;
+            _fs_get_inode_by_num(dev0, fsd.root_dir.entry[i].inode_num, &fnode);
+
+            // Check if fd already exists
+            if (fnode.id != EMPTY){
+                if (oft[fnode.id].state == FSTATE_OPEN){
+                    return SYSERR;
+                }
+                else{
+                    oft[fnode.id].state = FSTATE_OPEN;
+                    return fnode.id;
+                }
+            }
+
+            // Create new fd
+            for (int j = 0; j < NUM_FD; j++){
+                if(oft[j].in.id == EMPTY){
+                    fnode.id = i;
+                    oft[j].state    = FSTATE_OPEN;
+                    oft[j].fileptr  = 0;
+                    oft[j].de       = &fsd.root_dir.entry[i];
+                    oft[j].flag     = flags;
+                    memcpy(&oft[j].in, &fnode, sizeof(inode_t));
+                    return j;
+                }
+            }
+            break;
+        }
+    }
+    return SYSERR;
 }
 
 int fs_close(int fd) {
-  return SYSERR;
+    if (isbadfd(fd))
+        return SYSERR;
+    if (oft[fd].state == FSTATE_CLOSED)
+        return SYSERR;
+    oft[fd].state = FSTATE_CLOSED;
+    return OK;
 }
 
 int fs_create(char *filename, int mode) {
-  return SYSERR;
+    // Check if directory is full
+    if (fsd.ninodes == fsd.inodes_used)
+        return SYSERR;
+
+    // Check if file already exists
+    int filename_length = strlen(filename);
+    for (int i = 0; i < fsd.root_dir.numentries; i++)
+        if (strncmp(fsd.root_dir.entry[i].name, filename, filename_length) == 0)
+            return SYSERR;
+
+    // Find free inode
+    int free_node_id = EMPTY;
+    inode_t free_node;
+    for (int i = 0; i < fsd.ninodes; i++){
+        _fs_get_inode_by_num(dev0, i, &free_node);
+        if(free_node.id == EMPTY){
+            free_node_id = i;
+            break;
+        }
+    }
+    if (free_node_id == EMPTY)
+        return SYSERR;
+
+    // Add inode to fsd
+    fsd.root_dir.entry[fsd.inodes_used].inode_num = free_node_id;
+    memcpy(fsd.root_dir.entry[fsd.inodes_used].name, filename, filename_length);
+    fsd.inodes_used += 1;
+    bs_bwrite(dev0, SB_BLK, 0, &fsd, sizeof(fsystem_t));
+
+    // Initialize inode
+    free_node.type      = INODE_TYPE_FILE;
+    free_node.nlink     = 0;
+    free_node.device    = dev0;
+    free_node.size      = 0;
+
+    // Get free fd
+    int free_fd = EMPTY;
+    for (int i = 0; i < NUM_FD; i++){
+        if(oft[i].in.id == EMPTY){
+            free_node.id = i;
+            // Open file with O_RDWR
+            oft[i].state    = FSTATE_OPEN;
+            oft[i].fileptr  = 0;
+            oft[i].de       = &fsd.root_dir.entry[fsd.inodes_used - 1];
+            oft[i].flag     = O_RDWR;
+            memcpy(&oft[i].in, &free_node, sizeof(inode_t));
+            break;
+        }
+    }
+    _fs_put_inode_by_num(dev0, free_node_id, &free_node);
+    // Return FD
+    if (free_fd == EMPTY)
+        return SYSERR;
+    else
+        return free_fd;
 }
 
 int fs_seek(int fd, int offset) {

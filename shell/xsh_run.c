@@ -8,6 +8,7 @@
 #include <prodcons_bb.h>
 #include <future_prodcons.h>
 #include <streams.h>
+#include <fs_driver.h>
 
 /*----------------------------------------------------------------------------------
  * xsh_run - Runs the user provided command if it is in the list of allowed commands
@@ -32,6 +33,7 @@ void list_cmds(vcmds *cmds, int ncmds){
 shellcmd xsh_run(int nargs, char *args[]) {
 
     vcmds allowed_cmds[] = {
+        {"fstest", (void*) fstest_driver},
         {"futest", (void*) future_prodcons},
         {"hello", (void*) xsh_hello},
         {"list", (void*) list_cmds},
