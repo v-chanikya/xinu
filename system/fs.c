@@ -314,9 +314,15 @@ void fs_printfreemask(void) { // print block bitmask
  * TODO: implement the functions below
  */
 int fs_open(char *filename, int flags) {
-    
-    // Check if file already exists
+
     int filename_length = strlen(filename);
+    if (flags != O_RDWR ||
+            flags != O_WRONLY ||
+            flags != O_RDONLY ||
+            filename_length > FILENAMELEN)
+        return SYSERR;
+
+    // Check if file already exists
     for (int i = 0; i < fsd.root_dir.numentries; i++){
         if (strncmp(fsd.root_dir.entry[i].name, filename, filename_length) == 0){
             inode_t fnode;
@@ -361,12 +367,14 @@ int fs_close(int fd) {
 }
 
 int fs_create(char *filename, int mode) {
+    int filename_length = strlen(filename);
     // Check if directory is full
-    if (fsd.ninodes == fsd.inodes_used)
+    if (fsd.ninodes == fsd.inodes_used ||
+            mode != O_CREAT ||
+            filename_length > FILENAMELEN)
         return SYSERR;
 
     // Check if file already exists
-    int filename_length = strlen(filename);
     for (int i = 0; i < fsd.root_dir.numentries; i++)
         if (strncmp(fsd.root_dir.entry[i].name, filename, filename_length) == 0)
             return SYSERR;
@@ -388,18 +396,21 @@ int fs_create(char *filename, int mode) {
     fsd.root_dir.entry[fsd.inodes_used].inode_num = free_node_id;
     memcpy(fsd.root_dir.entry[fsd.inodes_used].name, filename, filename_length);
     fsd.inodes_used += 1;
+    fsd.root_dir.numentries += 1;
     bs_bwrite(dev0, SB_BLK, 0, &fsd, sizeof(fsystem_t));
 
     // Initialize inode
     free_node.type      = INODE_TYPE_FILE;
-    free_node.nlink     = 0;
+    free_node.nlink     = 1;
     free_node.device    = dev0;
     free_node.size      = 0;
 
     // Get free fd
     int free_fd = EMPTY;
     for (int i = 0; i < NUM_FD; i++){
-        if(oft[i].in.id == EMPTY){
+        /* if(oft[i].in.id == EMPTY){ */
+        if(oft[i].state == FSTATE_CLOSED){
+            free_fd = i;
             free_node.id = i;
             // Open file with O_RDWR
             oft[i].state    = FSTATE_OPEN;
