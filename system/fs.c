@@ -365,6 +365,7 @@ int fs_close(int fd) {
         return SYSERR;
     oft[fd].state   = FSTATE_CLOSED;
     oft[fd].flag    = 0;
+    oft[fd].fileptr = 0;
     return OK;
 }
 
@@ -443,16 +444,123 @@ int fs_create(char *filename, int mode) {
         return free_fd;
 }
 
+inline int find_fd(int fd){
+    if (isbadfd(fd))
+        return SYSERR;
+    if (oft[fd].in.id == EMPTY)
+        return SYSERR;
+    if (oft[fd].state == FSTATE_CLOSED)
+        return SYSERR;
+    return fd;
+}
+
 int fs_seek(int fd, int offset) {
-  return SYSERR;
+    int ofti = find_fd(fd);
+    if (ofti == SYSERR ||
+            (offset > oft[ofti].in.size))
+        return SYSERR;
+    
+    oft[ofti].fileptr = offset;
+    return OK;
 }
 
 int fs_read(int fd, void *buf, int nbytes) {
-  return SYSERR;
+    int ofti = find_fd(fd);
+    if (ofti == SYSERR ||
+            oft[ofti].flag == O_WRONLY)
+        return SYSERR;
+
+    int starting_block = oft[ofti].fileptr / MDEV_BLOCK_SIZE;
+    int offset = oft[ofti].fileptr % MDEV_BLOCK_SIZE;
+    int bytes_read = 0;
+    int read_size = 0;
+
+    // read more that present data
+    if (oft[ofti].fileptr + nbytes > oft[ofti].in.size)
+        nbytes = oft[ofti].in.size - oft[ofti].fileptr;
+    
+    // read block to memory and copy appropriate location in buf
+    while (nbytes != 0){
+        if (starting_block == INODEBLOCKS)
+            break;
+        bs_bread(dev0, oft[ofti].in.blocks[starting_block], 0, block_cache, fsd.blocksz);
+        if (MDEV_BLOCK_SIZE - offset > nbytes)
+            read_size = nbytes;
+        else
+            read_size = MDEV_BLOCK_SIZE - offset;
+        memcpy(buf + bytes_read, block_cache + offset, read_size);
+
+        bytes_read += read_size;
+        starting_block++;
+        offset = 0;
+        nbytes -= read_size;
+    }
+
+    // update fileptr for next use
+    oft[ofti].fileptr += bytes_read;
+    return bytes_read;
 }
 
 int fs_write(int fd, void *buf, int nbytes) {
-  return SYSERR;
+    int ofti = find_fd(fd);
+    if (ofti == SYSERR ||
+            oft[ofti].flag == O_RDONLY)
+        return SYSERR;
+
+
+    int starting_block = oft[ofti].fileptr / MDEV_BLOCK_SIZE;
+    // adjust blocks
+    int new_blocks = (oft[ofti].fileptr + nbytes) / MDEV_BLOCK_SIZE;
+    int old_blocks = oft[ofti].in.size / MDEV_BLOCK_SIZE;
+    
+    if (new_blocks > old_blocks){
+        if (new_blocks >= INODEBLOCKS)
+            new_blocks = INODEBLOCKS - 1;
+        int no_new_blocks = new_blocks - old_blocks;
+        starting_block = old_blocks + 1;
+        for (int i = 0; i < MDEV_NUM_BLOCKS && no_new_blocks != 0; i++){
+            if (fs_getmaskbit(i) == 0){
+                fs_setmaskbit(i);
+                oft[ofti].in.blocks[starting_block] = i;
+                starting_block++;
+                no_new_blocks--;
+            }
+        }
+    }
+    else if (new_blocks < old_blocks){
+        starting_block = new_blocks + 1;
+        int no_blocks_to_free = old_blocks - new_blocks;
+        for (int i = starting_block; i < no_blocks_to_free; i++){
+            fs_clearmaskbit(oft[ofti].in.blocks[starting_block]);
+        }
+    }
+
+    starting_block = oft[ofti].fileptr / MDEV_BLOCK_SIZE;
+    int offset = oft[ofti].fileptr % MDEV_BLOCK_SIZE;
+    int bytes_written = 0;
+    int written_size = 0;
+    
+    // write to file
+    while (nbytes != 0){
+        if (starting_block == INODEBLOCKS)
+            break;
+        bs_bread(dev0, oft[ofti].in.blocks[starting_block], 0, block_cache, fsd.blocksz);
+        if (MDEV_BLOCK_SIZE - offset > nbytes)
+            written_size = nbytes;
+        else
+            written_size = MDEV_BLOCK_SIZE - offset;
+        memcpy(block_cache + offset, buf + bytes_written, written_size);
+
+        bytes_written += written_size;
+        starting_block++;
+        offset = 0;
+        nbytes -= written_size;
+    }
+
+    // update fileptr for next use
+    oft[ofti].fileptr += bytes_written;
+    oft[ofti].in.size = oft[ofti].fileptr;
+    return bytes_written;
 }
 
 int fs_link(char *src_filename, char* dst_filename) {
