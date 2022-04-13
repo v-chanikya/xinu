@@ -444,46 +444,44 @@ int fs_create(char *filename, int mode) {
         return free_fd;
 }
 
-inline int find_fd(int fd){
+inline int check_fd(int fd){
     if (isbadfd(fd))
         return SYSERR;
     if (oft[fd].in.id == EMPTY)
         return SYSERR;
-    if (oft[fd].state == FSTATE_CLOSED)
-        return SYSERR;
+    /* if (oft[fd].state == FSTATE_CLOSED) */
+    /*     return SYSERR; */
     return fd;
 }
 
 int fs_seek(int fd, int offset) {
-    int ofti = find_fd(fd);
-    if (ofti == SYSERR ||
-            (offset > oft[ofti].in.size))
+    if (check_fd(fd) == SYSERR ||
+            (offset > oft[fd].in.size))
         return SYSERR;
     
-    oft[ofti].fileptr = offset;
+    oft[fd].fileptr = offset;
     return OK;
 }
 
 int fs_read(int fd, void *buf, int nbytes) {
-    int ofti = find_fd(fd);
-    if (ofti == SYSERR ||
-            oft[ofti].flag == O_WRONLY)
+    if (check_fd(fd) == SYSERR ||
+            oft[fd].flag == O_WRONLY)
         return SYSERR;
 
-    int starting_block = oft[ofti].fileptr / MDEV_BLOCK_SIZE;
-    int offset = oft[ofti].fileptr % MDEV_BLOCK_SIZE;
+    int starting_block = oft[fd].fileptr / MDEV_BLOCK_SIZE;
+    int offset = oft[fd].fileptr % MDEV_BLOCK_SIZE;
     int bytes_read = 0;
     int read_size = 0;
 
     // read more that present data
-    if (oft[ofti].fileptr + nbytes > oft[ofti].in.size)
-        nbytes = oft[ofti].in.size - oft[ofti].fileptr;
+    if (oft[fd].fileptr + nbytes > oft[fd].in.size)
+        nbytes = oft[fd].in.size - oft[fd].fileptr;
     
     // read block to memory and copy appropriate location in buf
     while (nbytes != 0){
         if (starting_block == INODEBLOCKS)
             break;
-        bs_bread(dev0, oft[ofti].in.blocks[starting_block], 0, block_cache, fsd.blocksz);
+        bs_bread(dev0, oft[fd].in.blocks[starting_block], 0, block_cache, fsd.blocksz);
         if (MDEV_BLOCK_SIZE - offset > nbytes)
             read_size = nbytes;
         else
@@ -497,21 +495,20 @@ int fs_read(int fd, void *buf, int nbytes) {
     }
 
     // update fileptr for next use
-    oft[ofti].fileptr += bytes_read;
+    oft[fd].fileptr += bytes_read;
     return bytes_read;
 }
 
 int fs_write(int fd, void *buf, int nbytes) {
-    int ofti = find_fd(fd);
-    if (ofti == SYSERR ||
-            oft[ofti].flag == O_RDONLY)
+    if (check_fd(fd) == SYSERR ||
+            oft[fd].flag == O_RDONLY)
         return SYSERR;
 
 
-    int starting_block = oft[ofti].fileptr / MDEV_BLOCK_SIZE;
+    int starting_block = oft[fd].fileptr / MDEV_BLOCK_SIZE;
     // adjust blocks
-    int new_blocks = (oft[ofti].fileptr + nbytes) / MDEV_BLOCK_SIZE;
-    int old_blocks = oft[ofti].in.size / MDEV_BLOCK_SIZE;
+    int new_blocks = (oft[fd].fileptr + nbytes) / MDEV_BLOCK_SIZE;
+    int old_blocks = oft[fd].in.size / MDEV_BLOCK_SIZE;
     
     if (new_blocks > old_blocks){
         if (new_blocks >= INODEBLOCKS)
@@ -521,7 +518,7 @@ int fs_write(int fd, void *buf, int nbytes) {
         for (int i = 0; i < MDEV_NUM_BLOCKS && no_new_blocks != 0; i++){
             if (fs_getmaskbit(i) == 0){
                 fs_setmaskbit(i);
-                oft[ofti].in.blocks[starting_block] = i;
+                oft[fd].in.blocks[starting_block] = i;
                 starting_block++;
                 no_new_blocks--;
             }
@@ -531,12 +528,12 @@ int fs_write(int fd, void *buf, int nbytes) {
         starting_block = new_blocks + 1;
         int no_blocks_to_free = old_blocks - new_blocks;
         for (int i = starting_block; i < no_blocks_to_free; i++){
-            fs_clearmaskbit(oft[ofti].in.blocks[starting_block]);
+            fs_clearmaskbit(oft[fd].in.blocks[starting_block]);
         }
     }
 
-    starting_block = oft[ofti].fileptr / MDEV_BLOCK_SIZE;
-    int offset = oft[ofti].fileptr % MDEV_BLOCK_SIZE;
+    starting_block = oft[fd].fileptr / MDEV_BLOCK_SIZE;
+    int offset = oft[fd].fileptr % MDEV_BLOCK_SIZE;
     int bytes_written = 0;
     int written_size = 0;
     
@@ -544,7 +541,7 @@ int fs_write(int fd, void *buf, int nbytes) {
     while (nbytes != 0){
         if (starting_block == INODEBLOCKS)
             break;
-        bs_bread(dev0, oft[ofti].in.blocks[starting_block], 0, block_cache, fsd.blocksz);
+        bs_bread(dev0, oft[fd].in.blocks[starting_block], 0, block_cache, fsd.blocksz);
         if (MDEV_BLOCK_SIZE - offset > nbytes)
             written_size = nbytes;
         else
@@ -558,8 +555,8 @@ int fs_write(int fd, void *buf, int nbytes) {
     }
 
     // update fileptr for next use
-    oft[ofti].fileptr += bytes_written;
-    oft[ofti].in.size = oft[ofti].fileptr;
+    oft[fd].fileptr += bytes_written;
+    oft[fd].in.size = oft[fd].fileptr;
     return bytes_written;
 }
 
