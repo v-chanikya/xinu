@@ -576,7 +576,7 @@ int fs_write(int fd, void *buf, int nbytes) {
     oft[fd].in.size = oft[fd].fileptr;
     
     // write back inode
-    _fs_put_inode_by_num(dev0, oft[fd].in.id, &oft[fd].in);
+    /* _fs_put_inode_by_num(dev0, oft[fd].in.id, &oft[fd].in); */
     return bytes_written;
 }
 
