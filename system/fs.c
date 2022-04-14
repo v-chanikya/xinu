@@ -449,8 +449,8 @@ inline int check_fd(int fd){
         return SYSERR;
     if (oft[fd].in.id == EMPTY)
         return SYSERR;
-    /* if (oft[fd].state == FSTATE_CLOSED) */
-    /*     return SYSERR; */
+    if (oft[fd].state == FSTATE_CLOSED)
+        return SYSERR;
     return fd;
 }
 
@@ -509,7 +509,17 @@ int fs_write(int fd, void *buf, int nbytes) {
     // adjust blocks
     int new_blocks = (oft[fd].fileptr + nbytes) / MDEV_BLOCK_SIZE;
     int old_blocks = oft[fd].in.size / MDEV_BLOCK_SIZE;
-    
+
+    // Allocate first block
+    if (oft[fd].in.size == 0){
+        for (int i = 0; i < MDEV_NUM_BLOCKS; i++){
+            if (fs_getmaskbit(i) == 0){
+                fs_setmaskbit(i);
+                oft[fd].in.blocks[0] = i;
+                break;
+            }
+        }
+    }
     if (new_blocks > old_blocks){
         if (new_blocks >= INODEBLOCKS)
             new_blocks = INODEBLOCKS - 1;
@@ -547,6 +557,7 @@ int fs_write(int fd, void *buf, int nbytes) {
         else
             written_size = MDEV_BLOCK_SIZE - offset;
         memcpy(block_cache + offset, buf + bytes_written, written_size);
+        bs_bwrite(dev0, oft[fd].in.blocks[starting_block], 0, block_cache, fsd.blocksz);
 
         bytes_written += written_size;
         starting_block++;
@@ -557,6 +568,9 @@ int fs_write(int fd, void *buf, int nbytes) {
     // update fileptr for next use
     oft[fd].fileptr += bytes_written;
     oft[fd].in.size = oft[fd].fileptr;
+    
+    // write back inode
+    /* _fs_put_inode_by_num(dev0, oft[fd]., &free_node); */
     return bytes_written;
 }
 

@@ -169,6 +169,36 @@ int fstest_create_close_open() {
   return OK;
 }
 
+int fstest_read_write_seek() {
+
+  int i, fd;
+
+  for (i = 0; i < 1; i++) {
+    ASSERT_PASS(bs_mkdev(0, MDEV_BLOCK_SIZE, MDEV_NUM_BLOCKS))
+    ASSERT_PASS(fs_mkfs(0, DEFAULT_NUM_INODES))
+    /* ASSERT_PASS(fs_create("test", O_CREAT)) */
+    fd = fs_create("test", O_CREAT);
+    fs_print_inode(fd);
+    fs_printfreemask();
+    printf("%d\n", fd);
+    char data[128] = "abcdef";
+    fs_print_oft();
+    printf("written %d\n", fs_write(fd, data, 6));
+    fs_printfreemask();
+    fs_print_inode(fd);
+    printf("return %d\n", fs_seek(fd, 2));
+    fs_print_inode(fd);
+    data[0] = '\0';
+    printf("read %d\n",fs_read(fd, data, 6));
+    fs_print_inode(fd);
+    printf("data retrived %s\n",data);
+    fs_close(fd);
+    ASSERT_PASS(fs_freefs(0))
+    ASSERT_PASS(bs_freedev(0))
+  }
+
+  return OK;
+}
 int fstest_create_close_create() {
 
   int i, fd;
@@ -219,6 +249,7 @@ int fstest(int nargs, char *args[]) {
   TEST(fstest_mkdev)
   TEST(fstest_create_close_open)
   TEST(fstest_create_close_create)
+  TEST(fstest_read_write_seek)
 
 #else
   printf("No filesystem support\n");
