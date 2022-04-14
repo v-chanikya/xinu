@@ -602,7 +602,7 @@ inline int check_fd(int fd){
         return SYSERR;
     if (oft[fd].state == FSTATE_CLOSED)
         return SYSERR;
-    return fd;
+    return OK;
 }
 
 int fs_seek(int fd, int offset) {
@@ -610,7 +610,7 @@ int fs_seek(int fd, int offset) {
             (offset > oft[fd].in.size))
         return SYSERR;
     
-    oft[fd].fileptr = offset;
+    oft[fd].fileptr = offset - 1;
     return OK;
 }
 
