@@ -472,17 +472,18 @@ int fs_read(int fd, void *buf, int nbytes) {
             oft[fd].flag == O_WRONLY)
         return SYSERR;
 
-    int starting_block = oft[fd].fileptr / MDEV_BLOCK_SIZE;
-    int offset = oft[fd].fileptr % MDEV_BLOCK_SIZE;
+    int initfp = oft[fd].fileptr == 0 ? 0 : oft[fd].fileptr - 1;
+    int starting_block = initfp / MDEV_BLOCK_SIZE;
+    int offset = initfp % MDEV_BLOCK_SIZE;
     int bytes_read = 0;
     int read_size = 0;
 
     // read more than present data
-    if (oft[fd].fileptr + nbytes > oft[fd].in.size)
-        nbytes = oft[fd].in.size - oft[fd].fileptr;
+    if (initfp + nbytes > oft[fd].in.size)
+        nbytes = oft[fd].in.size - initfp;
     
     // read block to memory and copy appropriate location in buf
-    while (nbytes != 0){
+    while (nbytes > 0){
         if (starting_block == INODEBLOCKS)
             break;
         bs_bread(dev0, oft[fd].in.blocks[starting_block], 0, block_cache, fsd.blocksz);
@@ -496,6 +497,7 @@ int fs_read(int fd, void *buf, int nbytes) {
         starting_block++;
         offset = 0;
         nbytes -= read_size;
+        /* printf("read_size: %d\tbytes read : %d\tstarting_block : %d\tnbytes : %d\toffset : %d\n", read_size, bytes_read, starting_block, nbytes, offset); */
     }
 
     // update fileptr for next use
@@ -555,7 +557,7 @@ int fs_write(int fd, void *buf, int nbytes)
     int written_size = 0;
     
     // write to file
-    while (nbytes != 0){
+    while (nbytes > 0){
         if (starting_block == INODEBLOCKS)
             break;
         bs_bread(dev0, oft[fd].in.blocks[starting_block], 0, block_cache, fsd.blocksz);
