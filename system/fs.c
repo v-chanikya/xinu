@@ -468,7 +468,7 @@ int fs_seek(int fd, int offset) {
 int fs_read(int fd, void *buf, int nbytes) {
     if (check_fd(fd) == SYSERR ||
             buf == NULL ||
-            nbytes < 0 ||
+            nbytes <= 0 ||
             oft[fd].flag == O_WRONLY)
         return SYSERR;
 
@@ -503,10 +503,11 @@ int fs_read(int fd, void *buf, int nbytes) {
     return bytes_read;
 }
 
-int fs_write(int fd, void *buf, int nbytes) {
+int fs_write(int fd, void *buf, int nbytes)
+{
     if (check_fd(fd) == SYSERR ||
             buf == NULL ||
-            nbytes < 0 ||
+            nbytes <= 0 ||
             oft[fd].flag == O_RDONLY)
         return SYSERR;
 
