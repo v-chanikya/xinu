@@ -419,6 +419,7 @@ int fs_create(char *filename, int mode) {
     free_node.nlink     = 1;
     free_node.device    = dev0;
     free_node.size      = 0;
+    free_node.id        = free_node_id;
 
     // Get free fd
     int free_fd = EMPTY;
@@ -456,7 +457,8 @@ inline int check_fd(int fd){
 
 int fs_seek(int fd, int offset) {
     if (check_fd(fd) == SYSERR ||
-            (offset > oft[fd].in.size))
+            offset < 0 ||
+            offset > oft[fd].in.size)
         return SYSERR;
     
     oft[fd].fileptr = offset;
@@ -466,6 +468,7 @@ int fs_seek(int fd, int offset) {
 int fs_read(int fd, void *buf, int nbytes) {
     if (check_fd(fd) == SYSERR ||
             buf == NULL ||
+            nbytes < 0 ||
             oft[fd].flag == O_WRONLY)
         return SYSERR;
 
@@ -503,6 +506,7 @@ int fs_read(int fd, void *buf, int nbytes) {
 int fs_write(int fd, void *buf, int nbytes) {
     if (check_fd(fd) == SYSERR ||
             buf == NULL ||
+            nbytes < 0 ||
             oft[fd].flag == O_RDONLY)
         return SYSERR;
 
@@ -572,7 +576,7 @@ int fs_write(int fd, void *buf, int nbytes) {
     oft[fd].in.size = oft[fd].fileptr;
     
     // write back inode
-    /* _fs_put_inode_by_num(dev0, oft[fd]., &free_node); */
+    _fs_put_inode_by_num(dev0, oft[fd].in.id, &oft[fd].in);
     return bytes_written;
 }
 
