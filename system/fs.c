@@ -465,6 +465,121 @@ int fs_seek(int fd, int offset) {
     return OK;
 }
 
+
+/* int fs_read(int fd, void *buf, int nbytes) */
+/* { */
+/*     if (isbadfd(fd) || oft[fd].state == FSTATE_CLOSED || oft[fd].flag == O_WRONLY) */
+/*     { */
+/*         return SYSERR; */
+/*     } */
+/*     char buffer[fsd.blocksz * INODEBLOCKS]; */
+/*     int size = 0; */
+/*     int blocks_to_read = 0; */
+/*     int already_read = 0; */
+/*     int index = 0; */
+
+/*     while (size != oft[fd].in.size) */
+/*     { */
+/*         int size_diff = oft[fd].in.size - size; */
+/*         blocks_to_read = size_diff < fsd.blocksz ? size_diff : fsd.blocksz; */
+
+/*         index = oft[fd].in.blocks[already_read++]; */
+
+/*         fs_clearmaskbit(index); */
+/*         bs_bread(0, index, 0, &buf[size], blocks_to_read); */
+/*         size += blocks_to_read; */
+/*     } */
+
+/*     memcpy(buf, &buffer[oft[fd].fileptr], nbytes); */
+/*     oft[fd].fileptr += nbytes; */
+
+/*     return nbytes; */
+/* } */
+
+int fs_write(int fd, void *buf, int nbytes)
+{
+    if (oft[fd].state == FSTATE_CLOSED || oft[fd].flag == O_RDONLY || isbadfd(fd))
+    {
+        return SYSERR;
+    }
+    int bytes_to_write;
+    char buffer[fsd.blocksz * INODEBLOCKS];
+
+    int fp = oft[fd].fileptr;
+    int size = 0;
+    int blocks_to_read = 0;
+    int already_read = 0;
+    int index = 0;
+
+    while (size != oft[fd].in.size)
+    {
+        int size_diff = oft[fd].in.size - size;
+        blocks_to_read = size_diff < fsd.blocksz ? size_diff : fsd.blocksz;
+
+        index = oft[fd].in.blocks[already_read++];
+
+        fs_clearmaskbit(index);
+        bs_bread(0, index, 0, &buf[size], blocks_to_read);
+        size += blocks_to_read;
+    }
+
+    memcpy(&buffer[fp], buf, nbytes);
+    fp += nbytes;
+
+    int free_bytes = nbytes;
+    int free_block = fsd.nblocks + 1;
+    int bytes;
+    void *bufptr = buf;
+    int i = INODEBLOCKS + 2;
+    int block_index = 0;
+    oft[fd].in.size = 0;
+    oft[fd].fileptr = 0;
+    while (free_bytes > 0)
+    {
+        for (; i <= fsd.nblocks; i++)
+        {
+            if (fs_getmaskbit(i) == 0)
+            {
+                free_block = i;
+                break;
+            }
+        }
+
+        if (i > fsd.nblocks)
+        {
+            return SYSERR;
+        }
+
+        if (free_bytes >= fsd.blocksz)
+        {
+            bytes = fsd.blocksz;
+            free_bytes -= fsd.blocksz;
+        }
+        else
+        {
+            bytes = free_bytes;
+            free_bytes = 0;
+        }
+
+        bs_bwrite(0, free_block, 0, bufptr, bytes);
+        bufptr += bytes;
+        oft[fd].fileptr += bytes;
+        oft[fd].in.blocks[block_index++] = free_block;
+        oft[fd].in.size += bytes;
+        fs_setmaskbit(free_block);
+        free_block = fsd.nblocks + 1;
+    }
+
+    _fs_put_inode_by_num(0, oft[fd].de->inode_num, &oft[fd].in);
+
+    bytes_to_write = oft[fd].in.size;
+    _fs_put_inode_by_num(0, oft[fd].de->inode_num, &oft[fd].in);
+
+    oft[fd].fileptr = fp;
+
+    return nbytes;
+}
+
 int fs_read(int fd, void *buf, int nbytes) {
     if (check_fd(fd) == SYSERR ||
             buf == NULL ||
@@ -505,83 +620,83 @@ int fs_read(int fd, void *buf, int nbytes) {
     return bytes_read;
 }
 
-int fs_write(int fd, void *buf, int nbytes)
-{
-    if (check_fd(fd) == SYSERR ||
-            buf == NULL ||
-            nbytes <= 0 ||
-            oft[fd].flag == O_RDONLY)
-        return SYSERR;
+/* int fs_write(int fd, void *buf, int nbytes) */
+/* { */
+/*     if (check_fd(fd) == SYSERR || */
+/*             buf == NULL || */
+/*             nbytes <= 0 || */
+/*             oft[fd].flag == O_RDONLY) */
+/*         return SYSERR; */
 
 
-    int starting_block = oft[fd].fileptr / MDEV_BLOCK_SIZE;
-    // adjust blocks
-    int new_blocks = (oft[fd].fileptr + nbytes) / MDEV_BLOCK_SIZE;
-    int old_blocks = oft[fd].in.size / MDEV_BLOCK_SIZE;
+/*     int starting_block = oft[fd].fileptr / MDEV_BLOCK_SIZE; */
+/*     // adjust blocks */
+/*     int new_blocks = (oft[fd].fileptr + nbytes) / MDEV_BLOCK_SIZE; */
+/*     int old_blocks = oft[fd].in.size / MDEV_BLOCK_SIZE; */
 
-    // Allocate first block
-    if (oft[fd].in.size == 0){
-        for (int i = 0; i < MDEV_NUM_BLOCKS; i++){
-            if (fs_getmaskbit(i) == 0){
-                fs_setmaskbit(i);
-                oft[fd].in.blocks[0] = i;
-                break;
-            }
-        }
-    }
-    if (new_blocks > old_blocks){
-        if (new_blocks >= INODEBLOCKS)
-            new_blocks = INODEBLOCKS - 1;
-        int no_new_blocks = new_blocks - old_blocks;
-        starting_block = old_blocks + 1;
-        for (int i = 0; i < MDEV_NUM_BLOCKS && no_new_blocks != 0; i++){
-            if (fs_getmaskbit(i) == 0){
-                fs_setmaskbit(i);
-                oft[fd].in.blocks[starting_block] = i;
-                starting_block++;
-                no_new_blocks--;
-            }
-        }
-    }
-    else if (new_blocks < old_blocks){
-        starting_block = new_blocks + 1;
-        int no_blocks_to_free = old_blocks - new_blocks;
-        for (int i = starting_block; i < no_blocks_to_free; i++){
-            fs_clearmaskbit(oft[fd].in.blocks[starting_block]);
-        }
-    }
+/*     // Allocate first block */
+/*     if (oft[fd].in.size == 0){ */
+/*         for (int i = 0; i < MDEV_NUM_BLOCKS; i++){ */
+/*             if (fs_getmaskbit(i) == 0){ */
+/*                 fs_setmaskbit(i); */
+/*                 oft[fd].in.blocks[0] = i; */
+/*                 break; */
+/*             } */
+/*         } */
+/*     } */
+/*     if (new_blocks > old_blocks){ */
+/*         if (new_blocks >= INODEBLOCKS) */
+/*             new_blocks = INODEBLOCKS - 1; */
+/*         int no_new_blocks = new_blocks - old_blocks; */
+/*         starting_block = old_blocks + 1; */
+/*         for (int i = 0; i < MDEV_NUM_BLOCKS && no_new_blocks != 0; i++){ */
+/*             if (fs_getmaskbit(i) == 0){ */
+/*                 fs_setmaskbit(i); */
+/*                 oft[fd].in.blocks[starting_block] = i; */
+/*                 starting_block++; */
+/*                 no_new_blocks--; */
+/*             } */
+/*         } */
+/*     } */
+/*     else if (new_blocks < old_blocks){ */
+/*         starting_block = new_blocks + 1; */
+/*         int no_blocks_to_free = old_blocks - new_blocks; */
+/*         for (int i = starting_block; i < no_blocks_to_free; i++){ */
+/*             fs_clearmaskbit(oft[fd].in.blocks[starting_block]); */
+/*         } */
+/*     } */
 
-    starting_block = oft[fd].fileptr / MDEV_BLOCK_SIZE;
-    int offset = oft[fd].fileptr % MDEV_BLOCK_SIZE;
-    int bytes_written = 0;
-    int written_size = 0;
+/*     starting_block = oft[fd].fileptr / MDEV_BLOCK_SIZE; */
+/*     int offset = oft[fd].fileptr % MDEV_BLOCK_SIZE; */
+/*     int bytes_written = 0; */
+/*     int written_size = 0; */
     
-    // write to file
-    while (nbytes > 0){
-        if (starting_block == INODEBLOCKS)
-            break;
-        bs_bread(dev0, oft[fd].in.blocks[starting_block], 0, block_cache, fsd.blocksz);
-        if (MDEV_BLOCK_SIZE - offset > nbytes)
-            written_size = nbytes;
-        else
-            written_size = MDEV_BLOCK_SIZE - offset;
-        memcpy(block_cache + offset, buf + bytes_written, written_size);
-        bs_bwrite(dev0, oft[fd].in.blocks[starting_block], 0, block_cache, fsd.blocksz);
+/*     // write to file */
+/*     while (nbytes > 0){ */
+/*         if (starting_block == INODEBLOCKS) */
+/*             break; */
+/*         bs_bread(dev0, oft[fd].in.blocks[starting_block], 0, block_cache, fsd.blocksz); */
+/*         if (MDEV_BLOCK_SIZE - offset > nbytes) */
+/*             written_size = nbytes; */
+/*         else */
+/*             written_size = MDEV_BLOCK_SIZE - offset; */
+/*         memcpy(block_cache + offset, buf + bytes_written, written_size); */
+/*         bs_bwrite(dev0, oft[fd].in.blocks[starting_block], 0, block_cache, fsd.blocksz); */
 
-        bytes_written += written_size;
-        starting_block++;
-        offset = 0;
-        nbytes -= written_size;
-    }
+/*         bytes_written += written_size; */
+/*         starting_block++; */
+/*         offset = 0; */
+/*         nbytes -= written_size; */
+/*     } */
 
-    // update fileptr for next use
-    oft[fd].fileptr += bytes_written;
-    oft[fd].in.size = oft[fd].fileptr;
+/*     // update fileptr for next use */
+/*     oft[fd].fileptr += bytes_written; */
+/*     oft[fd].in.size = oft[fd].fileptr; */
     
-    // write back inode
-    /* _fs_put_inode_by_num(dev0, oft[fd].in.id, &oft[fd].in); */
-    return bytes_written;
-}
+/*     // write back inode */
+/*     /1* _fs_put_inode_by_num(dev0, oft[fd].in.id, &oft[fd].in); *1/ */
+/*     return bytes_written; */
+/* } */
 
 int fs_link(char *src_filename, char* dst_filename) {
   return SYSERR;
