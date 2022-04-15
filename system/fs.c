@@ -466,35 +466,35 @@ int fs_seek(int fd, int offset) {
 }
 
 
-int fs_read(int fd, void *buf, int nbytes)
-{
-    if (isbadfd(fd) || oft[fd].state == FSTATE_CLOSED || oft[fd].flag == O_WRONLY)
-    {
-        return SYSERR;
-    }
-    char buffer[fsd.blocksz * INODEBLOCKS];
-    int size = 0;
-    int blocks_to_read = 0;
-    int already_read = 0;
-    int index = 0;
+/* int fs_read(int fd, void *buf, int nbytes) */
+/* { */
+/*     if (isbadfd(fd) || oft[fd].state == FSTATE_CLOSED || oft[fd].flag == O_WRONLY) */
+/*     { */
+/*         return SYSERR; */
+/*     } */
+/*     char buffer[fsd.blocksz * INODEBLOCKS]; */
+/*     int size = 0; */
+/*     int blocks_to_read = 0; */
+/*     int already_read = 0; */
+/*     int index = 0; */
 
-    while (size != oft[fd].in.size)
-    {
-        int size_diff = oft[fd].in.size - size;
-        blocks_to_read = size_diff < fsd.blocksz ? size_diff : fsd.blocksz;
+/*     while (size != oft[fd].in.size) */
+/*     { */
+/*         int size_diff = oft[fd].in.size - size; */
+/*         blocks_to_read = size_diff < fsd.blocksz ? size_diff : fsd.blocksz; */
 
-        index = oft[fd].in.blocks[already_read++];
+/*         index = oft[fd].in.blocks[already_read++]; */
 
-        fs_clearmaskbit(index);
-        bs_bread(0, index, 0, buf + size, blocks_to_read);
-        size += blocks_to_read;
-    }
+/*         fs_clearmaskbit(index); */
+/*         bs_bread(0, index, 0, buf + size, blocks_to_read); */
+/*         size += blocks_to_read; */
+/*     } */
 
-    memcpy(buf, &buffer[oft[fd].fileptr], nbytes);
-    oft[fd].fileptr += nbytes;
+/*     memcpy(buf, &buffer[oft[fd].fileptr], nbytes); */
+/*     oft[fd].fileptr += nbytes; */
 
-    return nbytes;
-}
+/*     return nbytes; */
+/* } */
 
 int fs_write(int fd, void *buf, int nbytes)
 {
@@ -581,45 +581,45 @@ int fs_write(int fd, void *buf, int nbytes)
     return nbytes;
 }
 
-/* int fs_read(int fd, void *buf, int nbytes) { */
-/*     if (check_fd(fd) == SYSERR || */
-/*             buf == NULL || */
-/*             nbytes <= 0 || */
-/*             oft[fd].flag == O_WRONLY) */
-/*         return SYSERR; */
+int fs_read(int fd, void *buf, int nbytes) {
+    if (check_fd(fd) == SYSERR ||
+            buf == NULL ||
+            nbytes <= 0 ||
+            oft[fd].flag == O_WRONLY)
+        return SYSERR;
 
-/*     int initfp = oft[fd].fileptr == 0 ? 0 : oft[fd].fileptr - 1; */
-/*     int starting_block = initfp / MDEV_BLOCK_SIZE; */
-/*     int offset = initfp % MDEV_BLOCK_SIZE; */
-/*     int bytes_read = 0; */
-/*     int read_size = 0; */
+    int initfp = oft[fd].fileptr == 0 ? 0 : oft[fd].fileptr;
+    int starting_block = initfp / MDEV_BLOCK_SIZE;
+    int offset = initfp % MDEV_BLOCK_SIZE;
+    int bytes_read = 0;
+    int read_size = 0;
 
-/*     // read more than present data */
-/*     if (initfp + nbytes > oft[fd].in.size) */
-/*         nbytes = oft[fd].in.size - initfp; */
+    // read more than present data
+    if (initfp + nbytes > oft[fd].in.size)
+        nbytes = oft[fd].in.size - initfp;
     
-/*     // read block to memory and copy appropriate location in buf */
-/*     while (nbytes > 0){ */
-/*         if (starting_block == INODEBLOCKS) */
-/*             break; */
-/*         bs_bread(dev0, oft[fd].in.blocks[starting_block], 0, block_cache, fsd.blocksz); */
-/*         if (MDEV_BLOCK_SIZE - offset > nbytes) */
-/*             read_size = nbytes; */
-/*         else */
-/*             read_size = MDEV_BLOCK_SIZE - offset; */
-/*         memcpy(buf + bytes_read, block_cache + offset, read_size); */
+    // read block to memory and copy appropriate location in buf
+    while (nbytes > 0){
+        if (starting_block >= INODEBLOCKS)
+            break;
+        bs_bread(dev0, oft[fd].in.blocks[starting_block], 0, block_cache, fsd.blocksz);
+        if (MDEV_BLOCK_SIZE - offset > nbytes)
+            read_size = nbytes;
+        else
+            read_size = MDEV_BLOCK_SIZE - offset;
+        memcpy(((char*)buf) + bytes_read, block_cache + offset, read_size);
 
-/*         bytes_read += read_size; */
-/*         starting_block++; */
-/*         offset = 0; */
-/*         nbytes -= read_size; */
-/*         /1* printf("read_size: %d\tbytes read : %d\tstarting_block : %d\tnbytes : %d\toffset : %d\n", read_size, bytes_read, starting_block, nbytes, offset); *1/ */
-/*     } */
+        bytes_read += read_size;
+        starting_block++;
+        offset = 0;
+        nbytes -= read_size;
+        /* printf("read_size: %d\tbytes read : %d\tstarting_block : %d\tnbytes : %d\toffset : %d\n", read_size, bytes_read, starting_block, nbytes, offset); */
+    }
 
-/*     // update fileptr for next use */
-/*     oft[fd].fileptr += bytes_read; */
-/*     return bytes_read; */
-/* } */
+    // update fileptr for next use
+    oft[fd].fileptr += bytes_read;
+    return bytes_read;
+}
 
 /* int fs_write(int fd, void *buf, int nbytes) */
 /* { */
