@@ -549,8 +549,8 @@ int fs_write(int fd, void *buf, int nbytes)
     memcpy(buffer + fp, buf, nbytes);
     fp += nbytes;
 
-    if (fp > oft[fd].in.size)
-        oft[fd].in.size = fp;
+    /* if (fp > oft[fd].in.size) */
+    /*     oft[fd].in.size = fp; */
 
     // Write back to disk
     int free_bytes = nbytes;
@@ -586,9 +586,9 @@ int fs_write(int fd, void *buf, int nbytes)
 
         bs_bwrite(0, free_block, 0, bufptr, bytes);
         bufptr += bytes;
-        /* oft[fd].fileptr += bytes; */
+        oft[fd].fileptr += bytes;
         oft[fd].in.blocks[block_index++] = free_block;
-        /* oft[fd].in.size += bytes; */
+        oft[fd].in.size += bytes;
         fs_setmaskbit(free_block);
         free_block = fsd.nblocks + 1;
     }
