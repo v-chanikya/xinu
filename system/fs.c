@@ -469,10 +469,12 @@ int fs_seek(int fd, int offset) {
 int fs_read(int fd, void *buf, int nbytes)
 {
     // Check inputs
-    if (isbadfd(fd) || nbytes<= 0 || oft[fd].state == FSTATE_CLOSED || oft[fd].flag == O_WRONLY)
-    {
+    if (isbadfd(fd) ||
+            nbytes<= 0 ||
+            oft[fd].state == FSTATE_CLOSED ||
+            oft[fd].flag == O_WRONLY)
         return SYSERR;
-    }
+
 
     // Read everything into buffer
     char buffer[fsd.blocksz * INODEBLOCKS];
@@ -483,24 +485,25 @@ int fs_read(int fd, void *buf, int nbytes)
     int fp = oft[fd].fileptr;
 
     // Reset nbytes to limit
-    if (fp + nbytes > fsd.blocksz * INODEBLOCKS){
+    if (fp + nbytes > fsd.blocksz * INODEBLOCKS)
         nbytes = (fsd.blocksz * INODEBLOCKS) - fp;
-    }
 
     while (size != oft[fd].in.size)
     {
         int size_diff = oft[fd].in.size - size;
-        bytest_to_read = size_diff < fsd.blocksz ? size_diff : fsd.blocksz;
+        if (size_diff < fsd.blocksz)
+            bytest_to_read = size_diff;
+        else
+            bytest_to_read = fsd.blocksz;
 
         index = oft[fd].in.blocks[already_read++];
 
-        /* fs_clearmaskbit(index); */
         bs_bread(0, index, 0, buffer + size, bytest_to_read);
         size += bytest_to_read;
     }
 
     // Copy just the requested portion
-    memcpy(buf, &buffer[fp], nbytes);
+    memcpy(buf, buffer + fp, nbytes);
 
     // Update fileptr
     oft[fd].fileptr += nbytes;
@@ -510,78 +513,79 @@ int fs_read(int fd, void *buf, int nbytes)
 
 int fs_write(int fd, void *buf, int nbytes)
 {
-    if (oft[fd].state == FSTATE_CLOSED || oft[fd].flag == O_RDONLY || isbadfd(fd))
-    {
+    if (oft[fd].state == FSTATE_CLOSED ||
+            oft[fd].flag == O_RDONLY ||
+            isbadfd(fd))
         return SYSERR;
-    }
-    char buffer[fsd.blocksz * INODEBLOCKS];
 
+
+    // Read everything into buffer and writeback
+    char buffer[fsd.blocksz * INODEBLOCKS];
     int fp = oft[fd].fileptr;
     int size = 0;
-    int blocks_to_read = 0;
+    int bytest_to_read = 0;
     int already_read = 0;
     int index = 0;
 
-    if (fp + nbytes > fsd.blocksz * INODEBLOCKS){
+    // reset bytes to write
+    if (fp + nbytes > fsd.blocksz * INODEBLOCKS)
         nbytes = (fsd.blocksz * INODEBLOCKS) - fp;
-    }
-    while (size != oft[fd].in.size)
-    {
+
+    while (size != oft[fd].in.size) {
         int size_diff = oft[fd].in.size - size;
-        blocks_to_read = size_diff < fsd.blocksz ? size_diff : fsd.blocksz;
+        bytest_to_read = size_diff < fsd.blocksz ? size_diff : fsd.blocksz;
 
         index = oft[fd].in.blocks[already_read++];
 
         fs_clearmaskbit(index);
-        bs_bread(0, index, 0, buf + size, blocks_to_read);
-        size += blocks_to_read;
+        bs_bread(0, index, 0, buffer + size, bytest_to_read);
+        size += bytest_to_read;
     }
 
-    memcpy(&buffer[fp], buf, nbytes);
+    // copy user data to buffer
+    memcpy(buffer + fp, buf, nbytes);
     fp += nbytes;
 
-    int free_bytes = nbytes;
+    if (fp > oft[fd].in.size)
+        oft[fd].in.size = fp;
+
+    // Write back to disk
+    int free_bytes = oft[fd].in.size;
     int free_block = fsd.nblocks + 1;
     int bytes;
-    void *bufptr = buf;
+    void *bufptr = buffer;
     int i = INODEBLOCKS + 2;
     int block_index = 0;
     oft[fd].in.size = 0;
     oft[fd].fileptr = 0;
-    while (free_bytes > 0)
-    {
+    while (free_bytes > 0) {
         if (block_index >= INODEBLOCKS)
             break;
-        for (; i <= fsd.nblocks; i++)
-        {
-            if (fs_getmaskbit(i) == 0)
-            {
+
+        for (; i <= fsd.nblocks; i++) {
+            if (fs_getmaskbit(i) == 0) {
                 free_block = i;
                 break;
             }
         }
 
         if (i > fsd.nblocks)
-        {
             break;
-        }
 
-        if (free_bytes >= fsd.blocksz)
-        {
+        if (free_bytes >= fsd.blocksz) {
             bytes = fsd.blocksz;
             free_bytes -= fsd.blocksz;
         }
-        else
-        {
+        else {
             bytes = free_bytes;
             free_bytes = 0;
         }
 
         bs_bwrite(0, free_block, 0, bufptr, bytes);
         bufptr += bytes;
-        oft[fd].fileptr += bytes;
+        /* oft[fd].fileptr += bytes; */
         oft[fd].in.blocks[block_index++] = free_block;
-        oft[fd].in.size += bytes;
+        /* oft[fd].in.size += bytes; */
         fs_setmaskbit(free_block);
         free_block = fsd.nblocks + 1;
     }
