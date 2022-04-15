@@ -250,8 +250,11 @@ int fstest_read_write_seek() {
     printf("data retrived:\n%s\n",data4);
     fs_print_inode(fd);
     fs_close(fd);
+    printf("fs closed\n");
     ASSERT_PASS(fs_freefs(0))
+    printf("fs freed\n");
     ASSERT_PASS(bs_freedev(0))
+    printf("fs dev free\n");
   }
 
   return OK;

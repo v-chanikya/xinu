@@ -486,7 +486,7 @@ int fs_read(int fd, void *buf, int nbytes)
         index = oft[fd].in.blocks[already_read++];
 
         fs_clearmaskbit(index);
-        bs_bread(0, index, 0, &buf[size], blocks_to_read);
+        bs_bread(0, index, 0, buf + size, blocks_to_read);
         size += blocks_to_read;
     }
 
@@ -502,7 +502,6 @@ int fs_write(int fd, void *buf, int nbytes)
     {
         return SYSERR;
     }
-    int bytes_to_write;
     char buffer[fsd.blocksz * INODEBLOCKS];
 
     int fp = oft[fd].fileptr;
@@ -522,17 +521,17 @@ int fs_write(int fd, void *buf, int nbytes)
         index = oft[fd].in.blocks[already_read++];
 
         fs_clearmaskbit(index);
-        bs_bread(0, index, 0, &buf[size], blocks_to_read);
+        bs_bread(0, index, 0, buffer + size, blocks_to_read);
         size += blocks_to_read;
     }
 
     memcpy(&buffer[fp], buf, nbytes);
     fp += nbytes;
 
-    int free_bytes = nbytes;
+    int free_bytes = fp;
     int free_block = fsd.nblocks + 1;
     int bytes;
-    void *bufptr = buf;
+    void *bufptr = buffer;
     int i = INODEBLOCKS + 2;
     int block_index = 0;
     oft[fd].in.size = 0;
@@ -575,9 +574,6 @@ int fs_write(int fd, void *buf, int nbytes)
         free_block = fsd.nblocks + 1;
     }
 
-    _fs_put_inode_by_num(0, oft[fd].de->inode_num, &oft[fd].in);
-
-    bytes_to_write = oft[fd].in.size;
     _fs_put_inode_by_num(0, oft[fd].de->inode_num, &oft[fd].in);
 
     oft[fd].fileptr = fp;
