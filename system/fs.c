@@ -511,6 +511,9 @@ int fs_write(int fd, void *buf, int nbytes)
     int already_read = 0;
     int index = 0;
 
+    if (fp + nbytes > fsd.blocksz * INODEBLOCKS){
+        nbytes = (fsd.blocksz * INODEBLOCKS) - fp;
+    }
     while (size != oft[fd].in.size)
     {
         int size_diff = oft[fd].in.size - size;
