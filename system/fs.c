@@ -536,6 +536,8 @@ int fs_write(int fd, void *buf, int nbytes)
     oft[fd].fileptr = 0;
     while (free_bytes > 0)
     {
+        if (block_index >= INODEBLOCKS)
+            break;
         for (; i <= fsd.nblocks; i++)
         {
             if (fs_getmaskbit(i) == 0)
@@ -547,7 +549,7 @@ int fs_write(int fd, void *buf, int nbytes)
 
         if (i > fsd.nblocks)
         {
-            return SYSERR;
+            break;
         }
 
         if (free_bytes >= fsd.blocksz)

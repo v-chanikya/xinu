@@ -214,7 +214,7 @@ int fstest_read_write_seek() {
     fs_printfreemask();
     fs_print_inode(fd);
     printf("opened fd is %d\n", fd);
-    printf("written %d\n", fs_write(fd, test_text, 4000));
+    printf("written %d\n", fs_write(fd, test_text, 7672));
     fs_printfreemask();
     fs_print_inode(fd);
     
