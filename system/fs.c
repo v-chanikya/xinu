@@ -521,17 +521,17 @@ int fs_write(int fd, void *buf, int nbytes)
         index = oft[fd].in.blocks[already_read++];
 
         fs_clearmaskbit(index);
-        bs_bread(0, index, 0, buffer + size, blocks_to_read);
+        bs_bread(0, index, 0, buf + size, blocks_to_read);
         size += blocks_to_read;
     }
 
     memcpy(&buffer[fp], buf, nbytes);
     fp += nbytes;
 
-    int free_bytes = fp;
+    int free_bytes = nbytes;
     int free_block = fsd.nblocks + 1;
     int bytes;
-    void *bufptr = buffer;
+    void *bufptr = buf;
     int i = INODEBLOCKS + 2;
     int block_index = 0;
     oft[fd].in.size = 0;
