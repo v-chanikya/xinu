@@ -533,12 +533,15 @@ int fs_write(int fd, void *buf, int nbytes)
 
     while (size != oft[fd].in.size) {
         int size_diff = oft[fd].in.size - size;
-        bytest_to_read = size_diff < fsd.blocksz ? size_diff : fsd.blocksz;
+        if (size_diff < fsd.blocksz)
+            bytest_to_read = size_diff;
+        else
+            bytest_to_read = fsd.blocksz;
 
         index = oft[fd].in.blocks[already_read++];
 
         fs_clearmaskbit(index);
-        bs_bread(0, index, 0, buffer + size, bytest_to_read);
+        bs_bread(0, index, 0, buf + size, bytest_to_read);
         size += bytest_to_read;
     }
 
@@ -550,10 +553,10 @@ int fs_write(int fd, void *buf, int nbytes)
         oft[fd].in.size = fp;
 
     // Write back to disk
-    int free_bytes = oft[fd].in.size;
+    int free_bytes = nbytes;
     int free_block = fsd.nblocks + 1;
     int bytes;
-    void *bufptr = buffer;
+    void *bufptr = buf;
     int i = INODEBLOCKS + 2;
     int block_index = 0;
     oft[fd].in.size = 0;
